@@ -44,6 +44,14 @@ def softmax(z: np.ndarray) -> np.ndarray:
     return e / np.sum(e, axis=-1, keepdims=True)
 
 
+def calc_metrics(probs: np.ndarray, y_true: np.ndarray) -> dict:
+    """Tính chỉ số đánh giá tương thích với eval.compute_metrics(y_true, y_pred, probs)."""
+    probs = np.asarray(probs, dtype=np.float64)
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_pred = probs.argmax(axis=1)
+    return compute_metrics(y_true=y_true, y_pred=y_pred, probs=probs)
+
+
 @dataclass
 class Config:
     # --- định danh ---
@@ -333,7 +341,7 @@ def run(cfg: Config) -> Dict[str, Any]:
         eval_model = ema.ema_model if (ema is not None) else model
         filenames_val, y_val, logits_val, val_loss = evaluate(eval_model, val_loader, val_criterion, device)
         probs_val = softmax(logits_val)
-        val_metrics = compute_metrics(probs_val, y_val)
+        val_metrics = calc_metrics(probs_val, y_val)
 
         val_macro_f1 = val_metrics["macro_f1"]
         val_top1 = val_metrics["top1"]
@@ -384,11 +392,11 @@ def run(cfg: Config) -> Dict[str, Any]:
             T_val = inf.fit_temperature(logits_val, y_val)
             probs_test_cal = inf.apply_temperature(logits_test, T_val)
             save_predictions(pred_path(cfg, "test"), fnames_test, y_test, probs_test_cal)
-            test_metrics = compute_metrics(probs_test_cal, y_test)
+            test_metrics = calc_metrics(probs_test_cal, y_test)
             print(f"--> KẾT QUẢ TEST (Calibrated T={T_val:.4f}): Top-1 Acc: {test_metrics['top1']*100:.2f}% | Macro-F1: {test_metrics['macro_f1']:.4f}")
         else:
             save_predictions(pred_path(cfg, "test"), fnames_test, y_test, probs_test)
-            test_metrics = compute_metrics(probs_test, y_test)
+            test_metrics = calc_metrics(probs_test, y_test)
             print(f"--> KẾT QUẢ TEST: Top-1 Acc: {test_metrics['top1']*100:.2f}% | Macro-F1: {test_metrics['macro_f1']:.4f}")
 
     # Lưu history và biểu đồ
