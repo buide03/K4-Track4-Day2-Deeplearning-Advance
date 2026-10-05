@@ -102,21 +102,21 @@ def class_weights(counts: Any, beta: float = 0.0) -> torch.Tensor:
 
 
 def rand_bbox(size: Tuple[int, int, int, int], lam: float) -> Tuple[int, int, int, int]:
-    W = size[2]
-    H = size[3]
+    H = size[2]
+    W = size[3]
     cut_rat = np.sqrt(1.0 - lam)
-    cut_w = int(W * cut_rat)
     cut_h = int(H * cut_rat)
+    cut_w = int(W * cut_rat)
 
-    cx = np.random.randint(W)
     cy = np.random.randint(H)
+    cx = np.random.randint(W)
 
-    bbx1 = np.clip(cx - cut_w // 2, 0, W)
     bby1 = np.clip(cy - cut_h // 2, 0, H)
-    bbx2 = np.clip(cx + cut_w // 2, 0, W)
     bby2 = np.clip(cy + cut_h // 2, 0, H)
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
 
-    return bbx1, bby1, bbx2, bby2
+    return bby1, bbx1, bby2, bbx2
 
 
 def mix_batch(x: torch.Tensor, y: torch.Tensor, alpha: float = 1.0,
@@ -138,11 +138,11 @@ def mix_batch(x: torch.Tensor, y: torch.Tensor, alpha: float = 1.0,
         return x_mixed, (y_a, y_b, lam)
 
     elif mode == "cutmix":
-        bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam)
+        bby1, bbx1, bby2, bbx2 = rand_bbox(x.size(), lam)
         x_mixed = x.clone()
-        x_mixed[:, :, bbx1:bbx2, bby1:bby2] = x[index, :, bbx1:bbx2, bby1:bby2]
+        x_mixed[:, :, bby1:bby2, bbx1:bbx2] = x[index, :, bby1:bby2, bbx1:bbx2]
         # Điều chỉnh lam theo diện tích thực tế
-        box_area = (bbx2 - bbx1) * (bby2 - bby1)
+        box_area = (bby2 - bby1) * (bbx2 - bbx1)
         total_area = x.size(2) * x.size(3)
         actual_lam = 1.0 - (box_area / float(total_area))
         return x_mixed, (y_a, y_b, actual_lam)
